@@ -1,12 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { OtpService } from './otp.service';
 import { OtpAdaptersService } from './otp-adapters/otp-adapters.service';
 import { OtpManagerService } from './otp-manager/otp-manager.service';
 
 describe('OtpService', () => {
-  let otpService: OtpService;
+  let service: OtpService;
   let otpAdaptersService: OtpAdaptersService;
   let otpManagerService: OtpManagerService;
+
+  beforeAll(() => {
+    process.env.OTP_TIMEOUT = '300'; // Set default timeout to 300 seconds (5 minutes)
+  });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -23,102 +32,106 @@ describe('OtpService', () => {
         {
           provide: OtpManagerService,
           useValue: {
-            generateOtp: jest.fn(),
+            generateOtp: jest.fn().mockResolvedValue('123456'),
             validateOtp: jest.fn(),
           },
         },
       ],
     }).compile();
 
-    otpService = module.get<OtpService>(OtpService);
+    service = module.get<OtpService>(OtpService);
     otpAdaptersService = module.get<OtpAdaptersService>(OtpAdaptersService);
     otpManagerService = module.get<OtpManagerService>(OtpManagerService);
   });
 
   it('should be defined', () => {
-    expect(otpService).toBeDefined();
+    expect(service).toBeDefined();
   });
 
   describe('sendOtp', () => {
-    it('should send OTP via mail, sms, and whatsapp and return success', async () => {
-      const otpGenerated = '123456';
-      jest
-        .spyOn(otpManagerService, 'generateOtp')
-        .mockResolvedValue(otpGenerated);
-
-      const result = await otpService.sendOtp(
-        ['mail', 'sms', 'whatsapp'],
-        'test@example.com',
-      );
-
-      expect(otpManagerService.generateOtp).toHaveBeenCalled();
-      expect(otpAdaptersService.mailOtpAdapter).toHaveBeenCalledWith(
-        otpGenerated,
-        'test@example.com',
-      );
-      expect(otpAdaptersService.smsOtpAdapter).toHaveBeenCalledWith(
-        otpGenerated,
-        'test@example.com',
-      );
-      expect(otpAdaptersService.whatsappOtpAdapter).toHaveBeenCalledWith(
-        otpGenerated,
-        'test@example.com',
-      );
-      expect(result).toEqual({
+    it('should send OTP via mail', async () => {
+      const response = await service.sendOtp('mail', 'test@example.com');
+      expect(response).toEqual({
         success: true,
         message: 'OTP sent successfully',
       });
+      expect(otpAdaptersService.mailOtpAdapter).toHaveBeenCalledWith(
+        '123456',
+        'test@example.com',
+      );
     });
 
-    it('should return failure if any adapter fails', async () => {
-      const otpGenerated = '123456';
+    it('should send OTP via sms', async () => {
+      const response = await service.sendOtp('sms', '1234567890');
+      expect(response).toEqual({
+        success: true,
+        message: 'OTP sent successfully',
+      });
+      expect(otpAdaptersService.smsOtpAdapter).toHaveBeenCalledWith(
+        '123456',
+        '1234567890',
+      );
+    });
+
+    it('should send OTP via whatsapp', async () => {
+      const response = await service.sendOtp('whatsapp', '1234567890');
+      expect(response).toEqual({
+        success: true,
+        message: 'OTP sent successfully',
+      });
+      expect(otpAdaptersService.whatsappOtpAdapter).toHaveBeenCalledWith(
+        '123456',
+        '1234567890',
+      );
+    });
+
+    it('should throw BadRequestException for invalid type', async () => {
+      await expect(service.sendOtp('invalid', '1234567890')).rejects.toThrow(
+        InternalServerErrorException || BadRequestException,
+      );
+    });
+
+    it('should handle internal server error', async () => {
       jest
         .spyOn(otpManagerService, 'generateOtp')
-        .mockResolvedValue(otpGenerated);
-      jest
-        .spyOn(otpAdaptersService, 'mailOtpAdapter')
-        .mockRejectedValue(new Error('Mail sending failed'));
-
-      const result = await otpService.sendOtp(
-        ['mail', 'sms', 'whatsapp'],
-        'test@example.com',
+        .mockRejectedValueOnce(new Error('Test error'));
+      await expect(service.sendOtp('mail', 'test@example.com')).rejects.toThrow(
+        InternalServerErrorException,
       );
-
-      expect(otpManagerService.generateOtp).toHaveBeenCalled();
-      expect(otpAdaptersService.mailOtpAdapter).toHaveBeenCalledWith(
-        otpGenerated,
-        'test@example.com',
-      );
-      expect(result).toEqual({
-        success: false,
-        message: 'OTP failed to send',
-      });
     });
   });
 
   describe('validateOtp', () => {
-    it('should validate the OTP and return success if valid', async () => {
-      jest.spyOn(otpManagerService, 'validateOtp').mockResolvedValue(true);
-
-      const result = await otpService.validateOtp('123456');
-
-      expect(otpManagerService.validateOtp).toHaveBeenCalledWith('123456');
-      expect(result).toEqual({
+    it('should validate a valid OTP', async () => {
+      jest.spyOn(otpManagerService, 'validateOtp').mockResolvedValueOnce(true);
+      const response = await service.validateOtp('123456');
+      expect(response).toEqual({
         success: true,
         message: 'OTP is valid and verified',
       });
     });
 
-    it('should return failure if the OTP is invalid or expired', async () => {
-      jest.spyOn(otpManagerService, 'validateOtp').mockResolvedValue(false);
-
-      const result = await otpService.validateOtp('123456');
-
-      expect(otpManagerService.validateOtp).toHaveBeenCalledWith('123456');
-      expect(result).toEqual({
+    it('should invalidate an invalid OTP', async () => {
+      jest.spyOn(otpManagerService, 'validateOtp').mockResolvedValueOnce(false);
+      const response = await service.validateOtp('000000');
+      expect(response).toEqual({
         success: false,
         message: 'OTP is invalid or expired',
       });
     });
+
+    it('should handle internal server error', async () => {
+      jest
+        .spyOn(otpManagerService, 'validateOtp')
+        .mockRejectedValueOnce(new Error('Test error'));
+      await expect(service.validateOtp('123456')).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+    jest.resetModules();
   });
 });

@@ -1,8 +1,9 @@
 import { IsBoolean, IsEnum, IsString, Length } from 'class-validator';
 
 export class OtpDto {
-  @IsEnum(['mail', 'sms', 'whatsapp'], { each: true })
-  type: string[];
+  @IsString()
+  @IsEnum(['mail', 'sms', 'whatsapp'])
+  type: string;
   @IsString()
   to: string;
 }

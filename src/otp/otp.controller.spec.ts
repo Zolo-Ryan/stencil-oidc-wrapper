@@ -32,7 +32,7 @@ describe('OtpController', () => {
   describe('sendOtp', () => {
     it('should call otpService.sendOtp and return the result', async () => {
       const otpDto: OtpDto = {
-        type: ['mail', 'sms'],
+        type: 'mail',
         to: 'test@example.com',
       };
       const otpResponseDto: OtpResponseDto = {
