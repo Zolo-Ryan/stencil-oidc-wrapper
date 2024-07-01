@@ -43,6 +43,7 @@ describe('KeyService', () => {
     publicKey: 'mockPublicKey1',
     secret: 'mockSecret1',
     type: 'RSA',
+    data: 'exampleData',
   };
 
   beforeEach(async () => {
@@ -104,6 +105,7 @@ describe('KeyService', () => {
           publicKey: 'mockPublicKey1',
           secret: 'mockSecret1',
           type: 'RSA',
+          data: 'exampleData',
         },
       ];
       jest

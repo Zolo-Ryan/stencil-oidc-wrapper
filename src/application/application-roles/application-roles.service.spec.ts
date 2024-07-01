@@ -73,24 +73,35 @@ describe('ApplicationRolesService', () => {
       name: 'string',
       tenantId: 'string',
     };
-
+    const mockApplicationResponse = {
+      id: mockRoleId,
+      description: 'Test role',
+      name: 'TestRole',
+      isDefault: false,
+      isSuperRole: false,
+      applicationsId: mockApplicationId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
     it('should create a new role successfully', async () => {
       jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
         success: true,
-        data: { tenantsId: null },
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
         message: 'Valid',
       });
       jest
         .spyOn(prismaService.application, 'findUnique')
         .mockResolvedValue(mockApplicationRes);
-      jest.spyOn(prismaService.applicationRole, 'create').mockResolvedValue({
-        id: mockRoleId,
-        description: 'Test role',
-        name: 'TestRole',
-        isDefault: false,
-        isSuperRole: false,
-        applicationsId: mockApplicationId,
-      });
+      jest.spyOn(prismaService.applicationRole, 'create').mockResolvedValue(mockApplicationResponse);
 
       const result = await service.createRole(
         mockRoleDto,
@@ -135,7 +146,16 @@ describe('ApplicationRolesService', () => {
     it('should throw BadRequestException if no data is provided', async () => {
       jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
         success: true,
-        data: { tenantsId: null },
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
         message: 'Valid',
       });
 
@@ -151,27 +171,46 @@ describe('ApplicationRolesService', () => {
     const mockHeaders = {};
     const mockApplicationId = 'app-id';
     const mockRoleId = 'role-id';
-
+    const mockRoleApplicationRes = {
+      id: mockApplicationId,
+      accessTokenSigningKeysId : 'access-token-id',
+      active : true,
+      data : 'data',
+      idTokenSigningKeysId : 'token-signing-id',
+      createdAt : new Date(),
+      updatedAt : new Date(),
+      name : 'name',
+      tenantId: 'tenant-id',
+    }
+    const mockApplicationRoleRes = {
+      id: mockRoleId,
+      applicationsId: mockApplicationId,
+      description: 'Test role',
+      createdAt : new Date(),
+      isDefault: false,
+      isSuperRole: false,
+      updatedAt : new Date(),
+      name: 'TestRole',
+    }
     it('should return role successfully', async () => {
       jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
         success: true,
-        data: { tenantsId: null },
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
         message: 'Valid',
       });
-      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue({
-        id: mockApplicationId,
-        tenantId: 'tenant-id',
-      });
+      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockRoleApplicationRes);
       jest
         .spyOn(prismaService.applicationRole, 'findUnique')
-        .mockResolvedValue({
-          id: mockRoleId,
-          description: 'Test role',
-          name: 'TestRole',
-          isDefault: false,
-          isSuperRole: false,
-          applicationsId: mockApplicationId,
-        });
+        .mockResolvedValue(mockApplicationRoleRes);
 
       const result = await service.getRole(
         mockApplicationId,
@@ -207,7 +246,16 @@ describe('ApplicationRolesService', () => {
     it('should throw BadRequestException if no application id is provided', async () => {
       jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
         success: true,
-        data: { tenantsId: null },
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
         message: 'Valid',
       });
 
@@ -226,25 +274,44 @@ describe('ApplicationRolesService', () => {
     const mockUpdateRoleDto: UpdateRoleDto = {
       description: 'Updated description',
     };
-
+    const mockRoleApplicationRes = {
+      id: mockApplicationId,
+      accessTokenSigningKeysId : 'access-token-id',
+      active : true,
+      data : 'data',
+      idTokenSigningKeysId : 'token-signing-id',
+      createdAt : new Date(),
+      updatedAt : new Date(),
+      name : 'name',
+      tenantId: 'tenant-id',
+    }
+    const mockApplicationRoleUpdateRes = {
+      id: mockRoleId,
+      applicationsId: mockApplicationId,
+      description: 'Updated description',
+      createdAt : new Date(),
+      isDefault: false,
+      isSuperRole: false,
+      updatedAt : new Date(),
+      name: 'TestRole',
+    }
     it('should update role successfully', async () => {
       jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
         success: true,
-        data: { tenantsId: null },
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
         message: 'Valid',
       });
-      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue({
-        id: mockApplicationId,
-        tenantId: 'tenant-id',
-      });
-      jest.spyOn(prismaService.applicationRole, 'update').mockResolvedValue({
-        id: mockRoleId,
-        description: 'Updated description',
-        name: 'TestRole',
-        isDefault: false,
-        isSuperRole: false,
-        applicationsId: mockApplicationId,
-      });
+      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockRoleApplicationRes);
+      jest.spyOn(prismaService.applicationRole, 'update').mockResolvedValue(mockApplicationRoleUpdateRes);
 
       const result = await service.updateRole(
         mockApplicationId,
@@ -286,7 +353,16 @@ describe('ApplicationRolesService', () => {
     it('should throw BadRequestException if no data is provided', async () => {
       jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
         success: true,
-        data: { tenantsId: null },
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
         message: 'Valid',
       });
 
@@ -302,25 +378,45 @@ describe('ApplicationRolesService', () => {
     const mockHeaders = {};
     const mockApplicationId = 'app-id';
     const mockRoleId = 'role-id';
-
+    const mockRoleApplicationRes = {
+      id: mockApplicationId,
+      accessTokenSigningKeysId : 'access-token-id',
+      active : true,
+      data : 'data',
+      idTokenSigningKeysId : 'token-signing-id',
+      createdAt : new Date(),
+      updatedAt : new Date(),
+      name : 'name',
+      tenantId: 'tenant-id',
+    }
+    // type '{ id: string; applicationsId: string; description: string; createdAt: Date; isDefault: boolean; isSuperRole: boolean; updatedAt: Date; name: string; }': createdAt, updatedAt
+    const mockApplicationRoleDeleteRes = {
+      id: mockRoleId,
+      applicationsId: mockApplicationId,
+      description: 'Test role',
+      createdAt : new Date(),
+      isDefault: false,
+      isSuperRole: false,
+      updatedAt : new Date(),
+      name: 'TestRole',
+    }
     it('should delete role successfully', async () => {
       jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
         success: true,
-        data: { tenantsId: null },
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
         message: 'Valid',
       });
-      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue({
-        id: mockApplicationId,
-        tenantId: 'tenant-id',
-      });
-      jest.spyOn(prismaService.applicationRole, 'delete').mockResolvedValue({
-        id: mockRoleId,
-        description: 'Test role',
-        name: 'TestRole',
-        isDefault: false,
-        isSuperRole: false,
-        applicationsId: mockApplicationId,
-      });
+      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockRoleApplicationRes);
+      jest.spyOn(prismaService.applicationRole, 'delete').mockResolvedValue(mockApplicationRoleDeleteRes);
 
       const result = await service.deleteRole(
         mockApplicationId,
@@ -356,7 +452,16 @@ describe('ApplicationRolesService', () => {
     it('should throw BadRequestException if no application id is provided', async () => {
       jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
         success: true,
-        data: { tenantsId: null },
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
         message: 'Valid',
       });
 
