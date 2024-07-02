@@ -109,70 +109,6 @@ export class ApplicationScopesService {
     }
   }
 
-  async getScope(
-    applicationsId: string,
-    id: string,
-    headers: object,
-  ): Promise<ResponseDto> {
-    const valid = await this.headerAuthService.validateRoute(
-      headers,
-      '/application/scope',
-      'GET',
-    );
-    if (!valid.success) {
-      throw new UnauthorizedException({
-        success: valid.success,
-        message: valid.message,
-      });
-    }
-    const tenant_id = valid.data.tenantsId
-      ? valid.data.tenantsId
-      : headers['x-stencil-tenantid'];
-    if (!applicationsId) {
-      throw new BadRequestException({
-        success: false,
-        message: 'No application id given',
-      });
-    }
-    if (!id) {
-      throw new BadRequestException({
-        success: false,
-        message: 'no id given to find scope',
-      });
-    }
-    const application = await this.prismaService.application.findUnique({
-      where: { id: applicationsId },
-    });
-    if (!application) {
-      throw new BadRequestException({
-        success: false,
-        message: 'No application with the given id exists',
-      });
-    }
-    if (application.tenantId !== tenant_id && valid.data.tenantsId !== null) {
-      throw new UnauthorizedException({
-        success: false,
-        message: 'You are not authorized enough',
-      });
-    }
-    const scope = await this.prismaService.applicationOauthScope.findUnique({
-      where: {
-        id,
-        applicationsId,
-      },
-    });
-    if (!scope) {
-      throw new BadRequestException({
-        success: false,
-        message: 'Asked scope dont exists on given application',
-      });
-    }
-    return {
-      success: true,
-      message: 'Scope found',
-      data: scope,
-    };
-  }
 
   async updateScope(
     id: string,
@@ -226,19 +162,23 @@ export class ApplicationScopesService {
         await this.prismaService.applicationOauthScope.findUnique({
           where: { id: scopeId, applicationsId: id },
         });
+        console.log(oldScope, " is the old scope data")
       const name = data.name ? data.name : oldScope.name;
 
       const oldDesc = JSON.parse(oldScope.description);
       const defaultConsentDetail = data.defaultConsentDetail
         ? data.defaultConsentDetail
         : oldDesc.defaultConsentDetail;
+        console.log(defaultConsentDetail, " is the consent detail")
       const defaultConsentMessage = data.defaultConsentMessage
         ? data.defaultConsentMessage
         : oldDesc.defaultConsentMessage;
+        console.log(defaultConsentMessage, " is the consent message")
       const description = JSON.stringify({
         defaultConsentDetail,
         defaultConsentMessage,
       });
+      console.log(description, " is the final description")
       const scope = await this.prismaService.applicationOauthScope.update({
         where: { id: scopeId },
         data: {
@@ -254,10 +194,10 @@ export class ApplicationScopesService {
       };
     } catch (error) {
       this.logger.log('Error occured while updating scope', error);
-      throw new HttpException(
-        'Error while updating scope',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new BadRequestException({
+        success : false,
+        message : 'Error while updating scope'
+      });
     }
   }
 

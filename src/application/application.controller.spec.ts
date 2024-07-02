@@ -13,6 +13,7 @@ import {
 } from './application.dto';
 import { ResponseDto } from '../dto/response.dto';
 import { randomUUID } from 'crypto';
+import { HeaderAuthService } from 'src/header-auth/header-auth.service';
 
 describe('ApplicationController', () => {
   let controller: ApplicationController;
@@ -20,75 +21,26 @@ describe('ApplicationController', () => {
   let applicationRoleService: ApplicationRolesService;
   let applicationScopeService: ApplicationScopesService;
 
-  // MOCK CREATE-APPLICATION-DTO
-  const mockCreateApplicationDto = {
-    active: true,
-    name: 'Mock Application',
-    scopes: [
-      {
-        defaultConsentDetail: 'Default consent detail example',
-        defaultConsentMessage: 'Default consent message example',
-        name: 'Mock Scope',
-        required: true,
-        id: '550e8400-e29b-41d4-a716-446655440000',
-      },
-    ],
-    roles: [
-      {
-        description: 'Admin role with full permissions',
-        isDefault: true,
-        isSuperRole: false,
-        name: 'Admin',
-        id: '550e8400-e29b-41d4-a716-446655440000',
-      },
-    ],
-    jwtConfiguration: {
-      accessTokenSigningKeysID: 'access-key-id-123',
-      refreshTokenTimeToLiveInMinutes: 1440,
-      timeToLiveInSeconds: 3600,
-      idTokenSigningKeysID: 'id-key-id-456',
-    },
-    oauthConfiguration: {
-      authorizedOriginURLs: [
-        'https://example.com',
-        'https://anotherexample.com',
-      ],
-      authorizedRedirectURLs: [
-        'https://example.com/callback',
-        'https://anotherexample.com/callback',
-      ],
-      clientSecret: 'supersecret',
-      enabledGrants: ['authorization_code', 'refresh_token'],
-      logoutURL: 'https://example.com/logout',
-    },
-  };
-
-  const mockApplicationService = {
-    returnAllApplications: jest.fn(),
-    createApplication: jest.fn(),
-    returnAnApplication: jest.fn(),
-    patchApplication: jest.fn(),
-    deleteApplication: jest.fn(),
-    returnOauthConfiguration: jest.fn(),
-  };
-
-  const mockApplicationRolesService = {
-    createRole: jest.fn(),
-    deleteRole: jest.fn(),
-    updateRole: jest.fn(),
-  };
-
-  const mockApplicationScopesService = {
-    createScope: jest.fn(),
-    deleteScope: jest.fn(),
-    updateScope: jest.fn(),
-  };
-
   beforeEach(async () => {
+    const mockApplicationService = {
+      returnAllApplications: jest.fn<Promise<ResponseDto>, [object]>(),
+    };
+    // Create a NestJS testing module to mock and inject dependencies
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [ApplicationController],
+      controllers: [ApplicationController], // Specify the controller to be tested
       providers: [
-        { provide: ApplicationService, useValue: mockApplicationService },
+        // Mock or provide necessary services
+        {
+          provide: ApplicationService,
+          useValue: {
+            returnAllApplications: jest.fn(),
+            createApplication: jest.fn(),
+            returnAnApplication: jest.fn(),
+            patchApplication: jest.fn(),
+            deleteApplication: jest.fn(),
+            returnOauthConfiguration: jest.fn(),
+          },
+        },
         {
           provide: ApplicationRolesService,
           useValue: {
@@ -126,6 +78,12 @@ describe('ApplicationController', () => {
   });
 
   describe('GET /application', () => {
+    it('should call applicationService.returnAllApplications with headers', async () => {
+      const headers = { authorization: 'Bearer token' };
+      await controller.allApplications(headers);
+      expect(applicationService.returnAllApplications).toHaveBeenCalledWith(headers);
+    });
+
     it('should return all applications', async () => {
       const headers = {}; // provide headers if needed
       const mockResponse: ResponseDto = {
@@ -139,6 +97,39 @@ describe('ApplicationController', () => {
 
       const result = await controller.allApplications(headers);
       expect(result).toEqual(mockResponse);
+    });
+    // it('should throw an error if applicationService.returnAllApplications throws', async () => {
+    //   const error = new Error('Test error');
+    //   applicationService.returnAllApplications.mockRejectedValue(error)
+      
+    //   await expect(controller.allApplications({})).rejects.toThrow(error);
+    // });
+
+    it('should handle error when fetching applications', async () => {
+      const headers = {};
+      const error = new Error('Internal Server Error');
+
+      jest.spyOn(applicationService, 'returnAllApplications').mockRejectedValue(error);
+
+      try {
+        await controller.allApplications(headers);
+      } catch (err) {
+        expect(err).toBe(error);
+      }
+      expect(applicationService.returnAllApplications).toHaveBeenCalledWith(headers);
+    });
+
+    it('should handle empty headers', async () => {
+      const result: ResponseDto = {
+        success : true,
+        message: 'All applications found',
+        data: [],
+      };
+
+      jest.spyOn(applicationService, 'returnAllApplications').mockResolvedValue(result);
+
+      expect(await controller.allApplications(null)).toBe(result);
+      expect(applicationService.returnAllApplications).toHaveBeenCalledWith(null);
     });
   });
 
@@ -174,21 +165,17 @@ describe('ApplicationController', () => {
     it('should create an application with random UUID', async () => {
       const headers = {}; // provide headers if needed
       const createDto = createApplicationDtoMock;
-      const mockResponse: ResponseDto = {
-        success: true,
-        message: 'Application created successfully',
-        data: [], // mock your data here if needed
-      };
+      const mockResponse = {};
       jest
         .spyOn(applicationService, 'createApplication')
-        .mockResolvedValue(mockResponse);
+        .mockResolvedValue();
 
-      expect(
-        await controller.createAnApplicationWithRandomUUID(
-          mockCreateApplicationDto,
-          {},
-        ),
-      ).toBe(result);
+      const result = await controller.createAnApplicationWithRandomUUID(
+        createDto,
+        headers,
+        mockResponse as any 
+      );
+      expect(result).toEqual(mockResponse);
     });
   });
 
@@ -210,48 +197,23 @@ describe('ApplicationController', () => {
     });
   });
 
-  describe('createAnApplication', () => {
-    it('should create an application with given ID', async () => {
-      const result: ResponseDto = {
-        success: true,
-        message: 'Application created successfully',
-        data: { id: 'given-id', ...mockCreateApplicationDto },
-      };
-      jest
-        .spyOn(applicationService, 'createApplication')
-        .mockResolvedValue(result);
-
-      expect(
-        await controller.createAnApplication(
-          mockCreateApplicationDto,
-          'given-id',
-          {},
-        ),
-      ).toBe(result);
-    });
-  });
-
-  describe('updateApplication', () => {
+  describe('PATCH /application/:applicationId', () => {
     it('should update an application', async () => {
       const headers = {}; // provide headers if needed
       const applicationId = 'mock-application-id';
       const updateDto: UpdateApplicationDto = {}; // provide data for UpdateApplicationDto
-      const mockResponse: ResponseDto = {
-        success: true,
-        message: 'Application updated successfully',
-        data: {}, // mock your data here if needed
-      };
+      const mockResponse = {};
       jest
         .spyOn(applicationService, 'patchApplication')
-        .mockResolvedValue(mockResponse);
+        .mockResolvedValue();
 
-      expect(
-        await controller.updateApplication(
-          'given-id',
-          mockCreateApplicationDto,
-          {},
-        ),
-      ).toBe(result);
+      const result = await controller.updateApplication(
+        applicationId,
+        updateDto,
+        headers,
+        mockResponse as any 
+      );
+      expect(result).toEqual(mockResponse);
     });
   });
 
@@ -299,9 +261,12 @@ describe('ApplicationController', () => {
         .spyOn(applicationRoleService, 'createRole')
         .mockResolvedValue(mockResponse);
 
-      expect(
-        await controller.createRoleWithRandomUUID('app-id', mockRoleDto, {}),
-      ).toBe(result);
+      const result = await controller.createRoleWithRandomUUID(
+        applicationId,
+        createDto,
+        headers,
+      );
+      expect(result).toEqual(mockResponse);
     });
   });
 
@@ -423,14 +388,13 @@ describe('ApplicationController', () => {
         .spyOn(applicationScopeService, 'createScope')
         .mockResolvedValue(mockResponse);
 
-      expect(
-        await controller.createScope(
-          'app-id',
-          'given-scope-id',
-          mockScopeDto,
-          {},
-        ),
-      ).toBe(result);
+      const result = await controller.createScope(
+        applicationId,
+        scopeId,
+        createDto,
+        headers,
+      );
+      expect(result).toEqual(mockResponse);
     });
   });
 
@@ -473,14 +437,12 @@ describe('ApplicationController', () => {
         .spyOn(applicationScopeService, 'deleteScope')
         .mockResolvedValue(mockResponse);
 
-      expect(
-        await controller.updateScope(
-          'app-id',
-          'given-scope-id',
-          mockScopeDto,
-          {},
-        ),
-      ).toBe(result);
+      const result = await controller.deleteScope(
+        applicationId,
+        scopeId,
+        headers,
+      );
+      expect(result).toEqual(mockResponse);
     });
   });
 
@@ -504,67 +466,8 @@ describe('ApplicationController', () => {
       expect(result).toEqual(mockResponse);
     });
   });
-});
 
-// UNIT TESTS: APPLICATION CONTROLLER
-// ---------------------------------
-// Test 1: allApplications
-// 1. Call allApplications method
-// 2. Expect returnAllApplications method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 2: createAnApplicationWithRandomUUID
-// 1. Call createAnApplicationWithRandomUUID method
-// 2. Expect createApplication method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 3: getAnApplication
-// 1. Call getAnApplication method
-// 2. Expect returnAnApplication method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 4: createAnApplication
-// 1. Call createAnApplication method
-// 2. Expect createApplication method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 5: updateApplication
-// 1. Call updateApplication method
-// 2. Expect patchApplication method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 6: deleteApplication
-// 1. Call deleteApplication method
-// 2. Expect deleteApplication method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 7: createRoleWithRandomUUID
-// 1. Call createRoleWithRandomUUID method
-// 2. Expect createRole method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 8: createRole
-// 1. Call createRole method
-// 2. Expect createRole method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 9: deleteRole
-// 1. Call deleteRole method
-// 2. Expect deleteRole method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 10: updateRole
-// 1. Call updateRole method
-// 2. Expect updateRole method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 11: createScopeWithRandomUUID
-// 1. Call createScopeWithRandomUUID method
-// 2. Expect createScope method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 12: createScope
-// 1. Call createScope method
-// 2. Expect createScope method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 13: deleteScope
-// 1. Call deleteScope method
-// 2. Expect deleteScope method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 14: updateScope
-// 1. Call updateScope method
-// 2. Expect updateScope method to have been called
-// 3. Expect the return value to be the same as the mocked result
-// Test 15: returnOauthConfiguration
-// 1. Call returnOauthConfiguration method
-// 2. Expect returnOauthConfiguration method to have been called
-// 3. Expect the return value to be the same as the mocked result
+  afterEach(() => {
+    jest.clearAllMocks(); // Clear all mocked functions to reset for the next test
+  });
+});

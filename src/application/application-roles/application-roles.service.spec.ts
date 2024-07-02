@@ -15,7 +15,7 @@ describe('ApplicationRolesService', () => {
   let service: ApplicationRolesService;
   let prismaService: PrismaService;
   let headerAuthService: HeaderAuthService;
-
+  let mockLogger: jest.Mocked<Logger>;
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -64,14 +64,14 @@ describe('ApplicationRolesService', () => {
     const mockRoleId = 'role-id';
     const mockApplicationRes = {
       id: mockApplicationId,
-      accessTokenSigningKeysId: 'string',
+      accessTokenSigningKeysId: 'accessTokenSignkeyId',
       active: true,
-      data: 'string',
-      idTokenSigningKeysId: 'string',
+      data: 'data',
+      idTokenSigningKeysId: 'signTokenId',
       createdAt: new Date(),
       updatedAt: new Date(),
-      name: 'string',
-      tenantId: 'string',
+      name: 'name',
+      tenantId: 'tenantId',
     };
     const mockApplicationResponse = {
       id: mockRoleId,
@@ -162,6 +162,119 @@ describe('ApplicationRolesService', () => {
       await expect(
         service.createRole(null, mockApplicationId, mockRoleId, mockHeaders),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if no applicationsId is provided', async () => {
+      jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValueOnce({
+        success: true,
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
+        message : 'Valid'
+      });
+
+      await expect(
+        service.createRole({} as RoleDto, null, 'roleId', {})
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException if application is not found', async () => {
+      jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValueOnce({
+        success: true,
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
+        message : 'Valid'
+      });
+      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValueOnce(
+        null
+      );
+
+      await expect(
+        service.createRole({} as RoleDto, 'appId', 'roleId', {})
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should assign tenant_id from headers if valid.data.tenantsId is not present', async () => {
+      jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValueOnce({
+        success: true,
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: null,
+        },
+        message : 'ok'
+      });
+      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValueOnce(mockApplicationRes);
+      jest.spyOn(prismaService.applicationRole, 'create').mockResolvedValueOnce({
+        id: 'roleId',
+      } as any);
+
+      const headers = { 'x-stencil-tenantid': 'headerTenantId' };
+      const roleDto = { name: 'role' } as RoleDto;
+      const applicationsId = 'appId';
+
+      await service.createRole(roleDto, applicationsId, null, headers);
+
+      // Check if tenant_id was assigned correctly
+      expect(headerAuthService.validateRoute).toHaveBeenCalledWith(
+        headers,
+        '/application/role',
+        'POST'
+      );
+    });
+
+    it('should assign tenant_id from headers if valid.data.tenantsId is not present', async () => {
+      jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValueOnce({
+        success: true,
+        data: {
+          id: 'api-key-id',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          keyManager: true, 
+          keyValue: 'some-key-value',
+          permissions: 'some-permissions', 
+          metaData: 'some-metadata',
+          tenantsId: "tenantId",
+        },
+        message : 'Valid'
+      });
+      jest.spyOn(prismaService.application, 'findUnique').mockResolvedValueOnce(mockApplicationRes);
+      jest.spyOn(prismaService.applicationRole, 'create').mockResolvedValueOnce({
+        id: 'roleId',
+      } as any);
+
+      const headers = { 'x-stencil-tenantid': 'headerTenantId' };
+      const roleDto = { name: 'role' } as RoleDto;
+      const applicationsId = 'appId';
+
+      await service.createRole(roleDto, applicationsId, null, headers);
+
+      // Check if tenant_id was assigned correctly
+      expect(headerAuthService.validateRoute).toHaveBeenCalledWith(
+        headers,
+        '/application/role',
+        'POST'
+      );
     });
 
     // Add other test cases for different scenarios...

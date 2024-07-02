@@ -10,7 +10,7 @@ import {
   RefreshTokenDto,
 } from '../oidc/dto/oidc.token.dto';
 import { KeyDto } from '../key/key.dto';
-import { ApplicationDataDto } from 'src/application/application.dto';
+import { ApplicationDataDto } from '../application/application.dto';
 
 @Injectable()
 export class UtilsService {

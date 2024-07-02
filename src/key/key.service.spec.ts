@@ -394,7 +394,7 @@ describe('KeyService', () => {
       algorithm: 'RS256',
       issuer: 'issuer',
       name: 'keyName',
-      length: '2048',
+      length: 2048,
     };
 
     it('should throw UnauthorizedException if authorization header is invalid', async () => {
@@ -441,7 +441,7 @@ describe('KeyService', () => {
             algorithm: 'RS256',
             issuer: 'issuer',
             name: null,
-            length: '2048',
+            length: 2048,
           },
           {
             authorization: 'valid-token',
@@ -456,7 +456,7 @@ describe('KeyService', () => {
             algorithm: null,
             issuer: 'issuer',
             name: 'keyName',
-            length: '2048',
+            length: 2048,
           },
           {
             authorization: 'valid-token',
