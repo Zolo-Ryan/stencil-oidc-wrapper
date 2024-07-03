@@ -162,23 +162,19 @@ export class ApplicationScopesService {
         await this.prismaService.applicationOauthScope.findUnique({
           where: { id: scopeId, applicationsId: id },
         });
-        console.log(oldScope, " is the old scope data")
       const name = data.name ? data.name : oldScope.name;
 
       const oldDesc = JSON.parse(oldScope.description);
       const defaultConsentDetail = data.defaultConsentDetail
         ? data.defaultConsentDetail
         : oldDesc.defaultConsentDetail;
-        console.log(defaultConsentDetail, " is the consent detail")
       const defaultConsentMessage = data.defaultConsentMessage
         ? data.defaultConsentMessage
         : oldDesc.defaultConsentMessage;
-        console.log(defaultConsentMessage, " is the consent message")
       const description = JSON.stringify({
         defaultConsentDetail,
         defaultConsentMessage,
       });
-      console.log(description, " is the final description")
       const scope = await this.prismaService.applicationOauthScope.update({
         where: { id: scopeId },
         data: {
@@ -194,9 +190,9 @@ export class ApplicationScopesService {
       };
     } catch (error) {
       this.logger.log('Error occured while updating scope', error);
-      throw new BadRequestException({
-        success : false,
-        message : 'Error while updating scope'
+      throw new InternalServerErrorException({
+        success: false,
+        message: 'Error while updating scope'
       });
     }
   }
@@ -241,12 +237,12 @@ export class ApplicationScopesService {
         message: 'You are not authorized enough',
       });
     }
-    if (!scopeId) {
-      throw new BadRequestException({
-        success: false,
-        message: 'No scope id provided',
-      });
-    }
+    // if (!scopeId) {
+    //   throw new BadRequestException({
+    //     success: false,
+    //     message: 'No scope id provided',
+    //   });
+    // }
     try {
       const scope = await this.prismaService.applicationOauthScope.delete({
         where: { id: scopeId, applicationsId: id },
