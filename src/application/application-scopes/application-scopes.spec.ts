@@ -5,7 +5,6 @@ import { UnauthorizedException, BadRequestException, InternalServerErrorExceptio
 import { RoleDto, ScopeDto, UpdateScopeDto } from '../application.dto';
 import { ResponseDto } from '../../dto/response.dto';
 import { randomUUID } from 'crypto';
-// import faker from 'faker';
 import { ApplicationScopesService } from './application-scopes.service';
 describe('ApplicationScopesService', () => {
     let service: ApplicationScopesService;
@@ -496,10 +495,10 @@ describe('ApplicationScopesService', () => {
                     tenantsId: 'minio-tenant',
                 },
             });
-            jest.spyOn(prismaService.applicationOauthScope, 'findUnique').mockResolvedValue(mockApplicationResponse);
+            jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
 
             const updateData: UpdateScopeDto = { defaultConsentDetail: 'newDetail' };
-
+            jest.spyOn(prismaService.applicationOauthScope, 'findUnique').mockResolvedValue(mockApplicationResponse)
             const defaultConsentDetail = updateData.defaultConsentDetail
                 ? updateData.defaultConsentDetail
                 : mockUpdateScopeDto.defaultConsentDetail;
@@ -608,9 +607,9 @@ describe('ApplicationScopesService', () => {
                 },
             });
             jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
-            jest.spyOn(prismaService.applicationOauthScope, 'create').mockResolvedValue(mockApplicationResponse);
+            jest.spyOn(prismaService.applicationOauthScope, 'findUnique').mockResolvedValue(mockApplicationResponse);
 
-            const result = await service.updateScope(mockApplicationId, "bc8800e0-d4f3-40ec-976c-99564c26ac60", mockUpdateScopeDto, mockHeaders);
+            const result = await service.updateScope(mockApplicationId, mockScopeId, mockUpdateScopeDto, mockHeaders);
             expect(result).toEqual({
                 success: true,
                 message: 'successfully created a new scope',

@@ -175,6 +175,8 @@ export class ApplicationScopesService {
         defaultConsentDetail,
         defaultConsentMessage,
       });
+      console.log(description, " is the description")
+      console.log(name, " is the name")
       const scope = await this.prismaService.applicationOauthScope.update({
         where: { id: scopeId },
         data: {
