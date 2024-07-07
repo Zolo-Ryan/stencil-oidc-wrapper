@@ -6,6 +6,7 @@ import { RoleDto, ScopeDto, UpdateScopeDto } from '../application.dto';
 import { ResponseDto } from '../../dto/response.dto';
 import { randomUUID } from 'crypto';
 import { ApplicationScopesService } from './application-scopes.service';
+import { updateDTO } from 'src/key/key.dto';
 describe('ApplicationScopesService', () => {
     let service: ApplicationScopesService;
     let prismaService: PrismaService;
@@ -177,33 +178,6 @@ describe('ApplicationScopesService', () => {
             await expect(service.createScope(mockScopeDto, mockApplicationId, mockScopeId, mockHeaders)).rejects.toThrow(UnauthorizedException);
         });
 
-        it('should create and return new scope', async () => {
-
-            jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
-                success: true,
-                message: 'Valid',
-                data: {
-                    id: 'api-key-id',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    keyManager: true,
-                    keyValue: 'some-key-value',
-                    permissions: 'some-permissions',
-                    metaData: 'some-metadata',
-                    tenantsId: 'minio-tenant',
-                },
-            });
-            jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
-            jest.spyOn(prismaService.applicationOauthScope, 'create').mockResolvedValue(mockApplicationResponse);
-
-            const result = await service.createScope(mockScopeDto, mockApplicationId, mockScopeId, mockHeaders);
-            expect(result).toEqual({
-                success: true,
-                message: 'successfully created a new scope',
-                data: mockApplicationResponse,
-            });
-        });
-
         it('should return data.id when data.id is present', async () => {
 
             jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
@@ -306,13 +280,41 @@ describe('ApplicationScopesService', () => {
                 },
             });
             jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
+            jest.spyOn(prismaService.applicationOauthScope, 'create').mockImplementation(() => {
+                throw new Error('Unique constraint failed on the fields: (`name`, `applicationsId`)');
+            });
+            await expect(
+                service.createScope(mockScopeDto, mockApplicationId, mockScopeId, mockHeaders),
+            ).rejects.toThrow(InternalServerErrorException);
+
+
+        });
+
+        it('should create and return new scope', async () => {
+
+            jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
+                success: true,
+                message: 'Valid',
+                data: {
+                    id: 'api-key-id',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    keyManager: true,
+                    keyValue: 'some-key-value',
+                    permissions: 'some-permissions',
+                    metaData: 'some-metadata',
+                    tenantsId: 'minio-tenant',
+                },
+            });
+            jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
             jest.spyOn(prismaService.applicationOauthScope, 'create').mockResolvedValue(mockApplicationResponse);
-            await expect(service.createScope({
-                defaultConsentDetail: 'Testscope',
-                defaultConsentMessage: 'ScopeConsentMsg',
-                name: "name",
-                required: true
-            }, mockApplicationId, 'null', mockHeaders)).rejects.toThrow(InternalServerErrorException)
+
+            const result = await service.createScope(mockScopeDto, mockApplicationId, mockScopeId, mockHeaders);
+            expect(result).toEqual({
+                success: true,
+                message: 'successfully created a new scope',
+                data: mockApplicationResponse,
+            });
         });
 
     });
@@ -496,21 +498,30 @@ describe('ApplicationScopesService', () => {
                 },
             });
             jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
+            const oldScope = {
+                id: mockScopeId,
+                applicationsId: mockApplicationId,
+                name: 'oldScopeName',
+                description: JSON.stringify({
+                    defaultConsentDetail: 'oldDetail',
+                    defaultConsentMessage: 'oldMessage',
+                }),
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+            jest.spyOn(prismaService.applicationOauthScope, 'findUnique').mockResolvedValue(oldScope);
 
-            const updateData: UpdateScopeDto = { defaultConsentDetail: 'newDetail' };
-            jest.spyOn(prismaService.applicationOauthScope, 'findUnique').mockResolvedValue(mockApplicationResponse)
-            const defaultConsentDetail = updateData.defaultConsentDetail
-                ? updateData.defaultConsentDetail
-                : mockUpdateScopeDto.defaultConsentDetail;
-            const result = await service.updateScope(mockApplicationId, mockScopeId, {
-                id: 'id',
-                defaultConsentDetail: defaultConsentDetail,
-                defaultConsentMessage: 'oldMessage',
-                name: randomUUID(),
-                required: true
-            }, mockHeaders)
-            expect(result.data.defaultConsentDetail).toEqual(defaultConsentDetail)
-            expect(defaultConsentDetail).toBe('newDetail');
+            const updatedScope = { ...oldScope, ...mockUpdateScopeDto, description: JSON.stringify(mockUpdateScopeDto) };
+
+            jest.spyOn(prismaService.applicationOauthScope, 'update').mockResolvedValue(updatedScope);
+
+            const response = await service.updateScope(mockApplicationId, mockScopeId, mockUpdateScopeDto, mockHeaders);
+
+            expect(response).toEqual({
+                success: true,
+                message: 'scope updated successfully',
+                data: updatedScope,
+            });
         });
 
         it('should use defaultConsentDetail from oldDesc if not provided in data', async () => {
@@ -550,46 +561,6 @@ describe('ApplicationScopesService', () => {
             expect(defaultConsentMessage).toBe('oldMessage');
         });
 
-        // it('should set defaultConsentDetail to data.defaultConsentDetail if provided', async () => {
-        //     const oldScope = {
-        //         id: mockScopeId,
-        //         applicationsId: mockApplicationId,
-        //         createdAt: new Date(),
-        //         updatedAt: new Date(),
-        //         name: 'oldName',
-        //         description: JSON.stringify({
-        //             defaultConsentDetail: 'oldDetail',
-        //             defaultConsentMessage: 'oldMessage',
-        //         }),
-        //     };
-        //     //  type '{ id: string; applicationsId: string; createdAt: Date; updatedAt: Date; name: string; description: string; }': createdAt, updatedAt
-        //     jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
-        //         success: true,
-        //         message: 'Valid',
-        //         data: {
-        //             id: 'api-key-id',
-        //             createdAt: new Date(),
-        //             updatedAt: new Date(),
-        //             keyManager: true,
-        //             keyValue: 'some-key-value',
-        //             permissions: 'some-permissions',
-        //             metaData: 'some-metadata',
-        //             tenantsId: 'minio-tenant',
-        //         },
-        //     });
-        //     jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
-        //     jest.spyOn(prismaService.applicationOauthScope, 'findUnique').mockResolvedValue(oldScope);
-        //     jest.spyOn(prismaService.applicationOauthScope, 'update').mockResolvedValue(oldScope);
-
-        //     const updateData: UpdateScopeDto = {
-        //         defaultConsentDetail: 'newDetail',
-        //     };
-
-        //     const result = await service.updateScope(mockApplicationId, mockScopeId, mockUpdateScopeDto, mockHeaders);
-
-        //     expect(JSON.parse(result.data.description).defaultConsentDetail).toBe(updateData.defaultConsentDetail);
-        // });
-
         it('should udpate the existing scope', async () => {
 
             jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
@@ -607,13 +578,29 @@ describe('ApplicationScopesService', () => {
                 },
             });
             jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
-            jest.spyOn(prismaService.applicationOauthScope, 'findUnique').mockResolvedValue(mockApplicationResponse);
+            const oldScope = {
+                id: mockScopeId,
+                applicationsId: mockApplicationId,
+                name: 'oldScopeName',
+                description: JSON.stringify({
+                    defaultConsentDetail: 'oldDetail',
+                    defaultConsentMessage: 'oldMessage',
+                }),
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+            jest.spyOn(prismaService.applicationOauthScope, 'findUnique').mockResolvedValue(oldScope);
 
-            const result = await service.updateScope(mockApplicationId, mockScopeId, mockUpdateScopeDto, mockHeaders);
-            expect(result).toEqual({
+            const updatedScope = { ...oldScope, ...mockUpdateScopeDto, description: JSON.stringify(mockUpdateScopeDto) };
+
+            jest.spyOn(prismaService.applicationOauthScope, 'update').mockResolvedValue(updatedScope);
+
+            const response = await service.updateScope(mockApplicationId, mockScopeId, mockUpdateScopeDto, mockHeaders);
+
+            expect(response).toEqual({
                 success: true,
-                message: 'successfully created a new scope',
-                data: mockApplicationResponse,
+                message: 'scope updated successfully',
+                data: updatedScope,
             });
         });
 
@@ -705,9 +692,27 @@ describe('ApplicationScopesService', () => {
                 },
             });
 
-            await expect(service.deleteScope('id', null, mockHeaders))
-                .rejects
-                .toThrow(BadRequestException);
+            await expect(service.deleteScope('id', null, mockHeaders)).rejects.toThrow(BadRequestException);
+        });
+
+        it('should throw UnauthorizedException if tenant IDs do not match', async () => {
+            jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
+                success: true,
+                message: 'Valid',
+                data: {
+                    id: 'api-key-id',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    keyManager: true,
+                    keyValue: 'some-key-value',
+                    permissions: 'some-permissions',
+                    metaData: 'some-metadata',
+                    tenantsId: 'null',
+                },
+            });
+            jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
+
+            await expect(service.deleteScope(mockApplicationId, mockScopeId, mockHeaders)).rejects.toThrow(UnauthorizedException);
         });
 
         it('should handle error while deleting scope', async () => {
@@ -733,6 +738,32 @@ describe('ApplicationScopesService', () => {
             await expect(service.deleteScope('id', 'scopeId', {}))
                 .rejects
                 .toThrow(InternalServerErrorException);
+        });
+
+        it('should delete scope successfully', async () => {
+            jest.spyOn(headerAuthService, 'validateRoute').mockResolvedValue({
+                success: true,
+                message: 'Valid',
+                data: {
+                    id: 'api-key-id',
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    keyManager: true,
+                    keyValue: 'some-key-value',
+                    permissions: 'some-permissions',
+                    metaData: 'some-metadata',
+                    tenantsId: 'minio-tenant',
+                },
+            });
+            jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
+            jest.spyOn(prismaService.applicationOauthScope, 'delete').mockResolvedValue(mockApplicationResponse)
+
+            const result = await service.deleteScope('id', 'scopeId', {})
+            expect(result).toEqual({
+                success: true,
+                message: 'Scope deleted successfully',
+                data: mockApplicationResponse,
+            })
         });
 
     });

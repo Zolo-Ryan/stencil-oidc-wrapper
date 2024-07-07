@@ -8,7 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { ScopeDto, UpdateScopeDto } from '../application.dto';
+import { ApplicationDataDto, ScopeDto, UpdateScopeDto } from '../application.dto';
 import { ResponseDto } from '../../dto/response.dto';
 import { HeaderAuthService } from '../../header-auth/header-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -233,18 +233,18 @@ export class ApplicationScopesService {
         message: 'no application with given id exists',
       });
     }
+    if (!scopeId) {
+      throw new BadRequestException({
+        success: false,
+        message: 'No scope id provided',
+      });
+    }
     if (application.tenantId !== tenant_id && valid.data.tenantsId !== null) {
       throw new UnauthorizedException({
         success: false,
         message: 'You are not authorized enough',
       });
     }
-    // if (!scopeId) {
-    //   throw new BadRequestException({
-    //     success: false,
-    //     message: 'No scope id provided',
-    //   });
-    // }
     try {
       const scope = await this.prismaService.applicationOauthScope.delete({
         where: { id: scopeId, applicationsId: id },

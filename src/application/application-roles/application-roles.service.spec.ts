@@ -12,6 +12,7 @@ import { RoleDto, UpdateRoleDto } from '../application.dto';
 import { ResponseDto } from '../../dto/response.dto';
 import { Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { updateDTO } from 'src/key/key.dto';
 
 describe('ApplicationRolesService', () => {
   let service: ApplicationRolesService;
@@ -332,13 +333,14 @@ describe('ApplicationRolesService', () => {
         },
       });
       jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
-      jest.spyOn(prismaService.applicationRole, 'create').mockResolvedValue(mockApplicationResponse);
-      await expect(service.createRole({
-        description: '',
-        isDefault: false,
-        isSuperRole: false,
-        name: 'name',
-      }, mockApplicationId, null, mockHeaders)).rejects.toThrow(InternalServerErrorException)
+
+      const error = new Error('Unique constraint failed on the fields: (`name`,`applicationsId`)');
+      jest.spyOn(prismaService.applicationRole, 'create').mockRejectedValue(error);
+
+      await expect(service.createRole(mockRoleDto, mockApplicationId, mockRoleId, mockHeaders)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+
     });
     // Add other test cases for different scenarios...
   });
@@ -515,7 +517,7 @@ describe('ApplicationRolesService', () => {
   // });
 
   describe('updateRole', () => {
-    const mockHeaders = {authorizaiton : 'master'};
+    const mockHeaders = { authorizaiton: 'master' };
     const mockApplicationId = 'myminioadmin';
     const mockRoleId = 'role-id';
     const mockUpdateRoleDto: UpdateRoleDto = {
@@ -688,19 +690,19 @@ describe('ApplicationRolesService', () => {
         },
       });
       jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
-      jest.spyOn(prismaService.applicationRole, 'create').mockResolvedValue(mockApplicationResponse);
-      await expect(service.updateRole(mockApplicationId, null, {
-        description: '',
-        isDefault: false,
-        isSuperRole: false,
-        name: 'name',
-      }, mockHeaders)).rejects.toThrow(InternalServerErrorException)
+
+      const error = new Error('Unique constraint failed on the fields: (`name`,`applicationsId`)');
+      jest.spyOn(prismaService.applicationRole, 'update').mockRejectedValue(error);
+
+      await expect(service.updateRole(mockApplicationId, mockRoleId, mockUpdateRoleDto, mockHeaders)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
     // Add other test cases for different scenarios...
   });
 
   describe('deleteRole', () => {
-    const mockHeaders = {authorization : 'master'};
+    const mockHeaders = { authorization: 'master' };
     const mockApplicationId = 'myminioadmin';
     const mockRoleId = 'role-id';
     const mockApplicationRes = {
@@ -743,7 +745,7 @@ describe('ApplicationRolesService', () => {
       jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
       jest.spyOn(prismaService.applicationRole, 'delete').mockResolvedValue(mockApplicationResponse);
 
-      const result = await service.deleteRole(mockApplicationId,mockRoleId,mockHeaders);
+      const result = await service.deleteRole(mockApplicationId, mockRoleId, mockHeaders);
 
       expect(result).toEqual({
         success: true,
@@ -842,8 +844,12 @@ describe('ApplicationRolesService', () => {
         },
       });
       jest.spyOn(prismaService.application, 'findUnique').mockResolvedValue(mockApplicationRes);
-      jest.spyOn(prismaService.applicationRole, 'create').mockResolvedValue(mockApplicationResponse);
-      await expect(service.deleteRole(mockApplicationId, mockRoleId, mockHeaders)).rejects.toThrow(InternalServerErrorException)
+      const error = new Error('Unique constraint failed on the fields: (`name`,`applicationsId`)');
+      jest.spyOn(prismaService.applicationRole, 'delete').mockRejectedValue(error);
+
+      await expect(service.deleteRole(mockApplicationId, mockRoleId, mockHeaders)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
 
 

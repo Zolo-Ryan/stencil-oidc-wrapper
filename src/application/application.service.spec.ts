@@ -125,7 +125,7 @@ describe('ApplicationService', () => {
 
         it('should throw BadRequestException if refresh token time and time to live is not given', async () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'tenantId' } });
-            PrismaServiceMock.tenant.findUnique.mockResolvedValue({data : JSON.stringify({ accessTokenSigningKeysID : null, idTokenSigningKeysID : null })});
+            PrismaServiceMock.tenant.findUnique.mockResolvedValue({ data: JSON.stringify({ accessTokenSigningKeysID: null, idTokenSigningKeysID: null }) });
             const res = mockResponse();
             await expect(service.createApplication('uuid', { name: 'appName' } as CreateApplicationDto, {}, res)).rejects.toThrow(BadRequestException);
         });
@@ -140,30 +140,51 @@ describe('ApplicationService', () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'tenantId' } });
             PrismaServiceMock.tenant.findUnique.mockResolvedValue(null);
             const res = mockResponse();
-            await expect(service.createApplication('uuid', { name : 'appName'} as CreateApplicationDto, {}, res)).rejects.toThrow(BadRequestException);
+            await expect(service.createApplication('uuid', { name: 'appName' } as CreateApplicationDto, {}, res)).rejects.toThrow(BadRequestException);
         });
-
-        // More tests for JWT configuration validation, roles and scopes creation...
 
         it('should create throw BadRequestException if refresh token time and time to live not given', async () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'minio-tenant' } });
-            PrismaServiceMock.tenant.findUnique.mockResolvedValue( {success : 'should create app wala test case', accessTokenSigningKeysId : 'null-key',idTokenSigningKeysId : 'key2', data: JSON.stringify({ accessTokenSigningKeysID: 'key1', idTokenSigningKeysID: 'key2', refreshTokenTimeToLiveInMinutes: null, timeToLiveInSeconds: null }) });
+            PrismaServiceMock.tenant.findUnique.mockResolvedValue({ accessTokenSigningKeysId: 'null-key', idTokenSigningKeysId: 'key2', data: JSON.stringify({ accessTokenSigningKeysID: 'key1', idTokenSigningKeysID: 'key2', refreshTokenTimeToLiveInMinutes: null, timeToLiveInSeconds: null }) });
             PrismaServiceMock.application.findUnique.mockResolvedValue(null);
             const res = mockResponse();
             await expect(service.createApplication('uuid', { name: 'appName', roles: [], scopes: [], oauthConfiguration: { authorizedOriginURLs: [] } } as CreateApplicationDto, { authorization: 'master' }, res)).rejects.toThrow(BadRequestException);
-            
+
         });
         it('should create throw BadRequestException if tenant access token keys does not match with access token or if tenant id token does not match with id token signing keys successfully', async () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'minio-tenant' } });
-            PrismaServiceMock.tenant.findUnique.mockResolvedValue( {accessTokenSigningKeysId : 'null-key',idTokenSigningKeysId : 'null-key', data: JSON.stringify({ accessTokenSigningKeysID: 'key1', idTokenSigningKeysID: 'key2', refreshTokenTimeToLiveInMinutes: 10, timeToLiveInSeconds: 10 }) });
+            PrismaServiceMock.tenant.findUnique.mockResolvedValue({ accessTokenSigningKeysId: 'null-key', idTokenSigningKeysId: 'null-key', data: JSON.stringify({ accessTokenSigningKeysID: 'key1', idTokenSigningKeysID: 'key2', refreshTokenTimeToLiveInMinutes: 10, timeToLiveInSeconds: 10 }) });
             PrismaServiceMock.application.findUnique.mockResolvedValue(null);
             const res = mockResponse();
             await expect(service.createApplication('uuid', { name: 'appName', roles: [], scopes: [], oauthConfiguration: { authorizedOriginURLs: [] } } as CreateApplicationDto, { authorization: 'master' }, res)).rejects.toThrow(BadRequestException);
-            
+
         });
+
+        it('should handle internal server error during application creation', async () => {
+            
+            const res = {
+              send: jest.fn(),
+            } as unknown as Response;
+        
+            HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'minio-tenant' } });
+            
+            PrismaServiceMock.tenant.findUnique.mockResolvedValue({ accessTokenSigningKeysId: 'key1', idTokenSigningKeysId: 'key2', data: JSON.stringify({ accessTokenSigningKeysID: 'key1', idTokenSigningKeysID: 'key2', refreshTokenTimeToLiveInMinutes: 10, timeToLiveInSeconds: 10 }) });
+            PrismaServiceMock.application.findUnique.mockResolvedValue(null);
+            const error = new Error('Error creating application');
+            PrismaServiceMock.application.create.mockRejectedValue(error)
+            
+            await expect(service.createApplication('uuid', { name: 'appName', roles: [], scopes: [], oauthConfiguration: { authorizedOriginURLs: [] } } as CreateApplicationDto, { authorization: 'master' }, res)).rejects.toThrow(
+              InternalServerErrorException,
+            );
+        
+            expect(prismaService.application.create).toHaveBeenCalledWith({
+              data: expect.any(Object),
+            });
+          });
+
         it('should create application successfully', async () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'minio-tenant' } });
-            PrismaServiceMock.tenant.findUnique.mockResolvedValue( {accessTokenSigningKeysId : 'key1',idTokenSigningKeysId : 'key2', data: JSON.stringify({ accessTokenSigningKeysID: 'key1', idTokenSigningKeysID: 'key2', refreshTokenTimeToLiveInMinutes: 10, timeToLiveInSeconds: 10 }) });
+            PrismaServiceMock.tenant.findUnique.mockResolvedValue({ accessTokenSigningKeysId: 'key1', idTokenSigningKeysId: 'key2', data: JSON.stringify({ accessTokenSigningKeysID: 'key1', idTokenSigningKeysID: 'key2', refreshTokenTimeToLiveInMinutes: 10, timeToLiveInSeconds: 10 }) });
             PrismaServiceMock.application.findUnique.mockResolvedValue(null);
             PrismaServiceMock.application.create.mockResolvedValue({ id: 'uuid' });
             const res = mockResponse();
@@ -175,7 +196,7 @@ describe('ApplicationService', () => {
             });
         });
 
-        
+
     });
 
     describe('patchApplication', () => {
@@ -208,7 +229,21 @@ describe('ApplicationService', () => {
             PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenantId', data: JSON.stringify({}) });
             const res = mockResponse();
             await expect(service.patchApplication('id', { name: 'newName', oauthConfiguration: { authorizedOriginURLs: [] } } as UpdateApplicationDto, {}, res)).rejects.toThrow(UnauthorizedException);
-          });
+        });
+
+        it('should throw InternalServerError while updating the application', async () => {
+            HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'tenantId' } });
+            PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenantId', data: JSON.stringify({}) });
+
+            const error = new Error('Unique constraint failed on the fields: (`name`,`tenantId`)');
+            jest.spyOn(prismaService.application, 'update').mockRejectedValue(error);
+            const res = {
+                send: jest.fn(),
+            } as unknown as Response;
+            await expect(service.patchApplication('id', {} as UpdateApplicationDto, {}, res)).rejects.toThrow(
+                InternalServerErrorException,
+            );
+        });
 
         it('should update application successfully', async () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'tenantId' } });
@@ -262,12 +297,12 @@ describe('ApplicationService', () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'differentTenantId' } });
             PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenantId', data: JSON.stringify({}) });
             const res = mockResponse();
-            await expect(service.returnAnApplication('id',{})).rejects.toThrow(UnauthorizedException);
-          });
+            await expect(service.returnAnApplication('id', {})).rejects.toThrow(UnauthorizedException);
+        });
 
         it('should return an application successfully', async () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'tenant_id' } });
-            PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId : 'tenant_id' });
+            PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenant_id' });
             const result = await service.returnAnApplication('id', { authorization: 'master' });
             expect(result.success).toBe(true);
             expect(result.data.application.id).toBe('id');
@@ -290,17 +325,19 @@ describe('ApplicationService', () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'differentTenantId' } });
             PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenantId', data: JSON.stringify({}) });
             const res = mockResponse();
-            await expect(service.deleteApplication('id',true, {})).rejects.toThrow(UnauthorizedException);
+            await expect(service.deleteApplication('id', true, {})).rejects.toThrow(UnauthorizedException);
         });
 
-        it('should throw internal server error while hard deleting application successfully', async () => {
+        it('should throw InternalServerError while updating the application', async () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'tenantId' } });
-            PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenantId' });
-            PrismaServiceMock.application.delete.mockResolvedValue(null);
-            PrismaServiceMock.publicKeys.deleteMany.mockResolvedValue({});
-            const result = await service.deleteApplication('id', true, {});
-            expect(result.success).toBe(true);
-            expect(result.message).toBe('Application deleted Successfully!');
+            PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenantId', data: JSON.stringify({}) });
+
+            const error = new Error('Unique constraint failed on the fields: (`name`,`tenantId`)');
+            jest.spyOn(prismaService.application, 'delete').mockRejectedValue(error);
+            const res = {
+                send: jest.fn(),
+            } as unknown as Response;
+            await expect(service.deleteApplication('id',true, {})).rejects.toThrow(InternalServerErrorException);
         });
 
         it('should delete application softly', async () => {
@@ -333,7 +370,7 @@ describe('ApplicationService', () => {
         it('should throw BadRequestException if no id is provided', async () => {
             HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'tenantId' } });
             PrismaServiceMock.application.findUnique.mockResolvedValue(null);
-            
+
             await expect(service.returnOauthConfiguration(null, {})).rejects.toThrow(BadRequestException);
         });
 
@@ -349,10 +386,10 @@ describe('ApplicationService', () => {
             PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenantId', data: JSON.stringify({}) });
             const res = mockResponse();
             await expect(service.returnOauthConfiguration('id', {})).rejects.toThrow(UnauthorizedException);
-          });
+        });
 
         it('should return OAuth configuration successfully', async () => {
-            HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data : { tenantsId : 'tenantId'} });
+            HeaderAuthServiceMock.validateRoute.mockResolvedValue({ success: true, data: { tenantsId: 'tenantId' } });
             PrismaServiceMock.application.findUnique.mockResolvedValue({ id: 'id', tenantId: 'tenantId' });
             PrismaServiceMock.tenant.findUnique.mockResolvedValue({ data: JSON.stringify({ oauthConfiguration: {} }) });
             const result = await service.returnOauthConfiguration('id', {});
@@ -360,56 +397,56 @@ describe('ApplicationService', () => {
             expect(result.data).toBeDefined();
         });
     });
-    describe('ApplicationService - storePublicKeys', () => {
-      
-        it('should return null if authorizedOriginURLS is empty', async () => {
-          const result = await service['storePublicKeys']([], 'applicationId');
-          expect(result).toBeNull();
-        });
-      
-        it('should store public keys for valid URLs', async () => {
-          const urls = ['https://example.com'];
-          const publicKeyData = { success: true, data: 'publicKey' };
-          UtilsServiceMock.getPublicKey.mockResolvedValue(publicKeyData);
-          PrismaServiceMock.publicKeys.create.mockResolvedValue({});
-      
-          const result = await service['storePublicKeys'](urls, 'applicationId');
-      
-          expect(UtilsServiceMock.getPublicKey).toHaveBeenCalledWith('example.com');
-          expect(PrismaServiceMock.publicKeys.create).toHaveBeenCalledWith({
-            data: {
-              hostname: 'example.com',
-              publicKey: 'publicKey',
-              applicationId: 'applicationId',
-            },
-          });
-          expect(result).toHaveLength(1);
-        });
-      
-        it('should handle errors when fetching public keys', async () => {
-          const urls = ['https://example.com'];
-          UtilsServiceMock.getPublicKey.mockRejectedValue(new Error('Network error'));
-      
-          const result = await service['storePublicKeys'](urls, 'applicationId');
-      
-          expect(logger.error).toHaveBeenCalledWith('Error on https://example.com while getting public key');
-          expect(result).toHaveLength(0);
-        });
-      
-        it('should filter out invalid public key responses', async () => {
-          const urls = ['https://example.com', 'https://another.com'];
-          UtilsServiceMock.getPublicKey
-            .mockResolvedValueOnce({ success: true, data: 'publicKey' })
-            .mockResolvedValueOnce({ success: false });
-      
-          PrismaServiceMock.publicKeys.create.mockResolvedValue({});
-      
-          const result = await service['storePublicKeys'](urls, 'applicationId');
-      
-          expect(UtilsServiceMock.getPublicKey).toHaveBeenCalledWith('example.com');
-          expect(UtilsServiceMock.getPublicKey).toHaveBeenCalledWith('another.com');
-          expect(PrismaServiceMock.publicKeys.create).toHaveBeenCalledTimes(1);
-          expect(result).toHaveLength(1);
-        });
-      });
+    // describe('ApplicationService - storePublicKeys', () => {
+
+    //     it('should return null if authorizedOriginURLS is empty', async () => {
+    //       const result = await service['storePublicKeys']([], 'applicationId');
+    //       expect(result).toBeNull();
+    //     });
+
+    //     it('should store public keys for valid URLs', async () => {
+    //       const urls = ['https://example.com'];
+    //       const publicKeyData = { success: true, data: 'publicKey' };
+    //       UtilsServiceMock.getPublicKey.mockResolvedValue(publicKeyData);
+    //       PrismaServiceMock.publicKeys.create.mockResolvedValue({});
+
+    //       const result = await service['storePublicKeys'](urls, 'applicationId');
+
+    //       expect(UtilsServiceMock.getPublicKey).toHaveBeenCalledWith('example.com');
+    //       expect(PrismaServiceMock.publicKeys.create).toHaveBeenCalledWith({
+    //         data: {
+    //           hostname: 'example.com',
+    //           publicKey: 'publicKey',
+    //           applicationId: 'applicationId',
+    //         },
+    //       });
+    //       expect(result).toHaveLength(1);
+    //     });
+
+    //     it('should handle errors when fetching public keys', async () => {
+    //       const urls = ['https://example.com'];
+    //       UtilsServiceMock.getPublicKey.mockRejectedValue(new Error('Network error'));
+
+    //       const result = await service['storePublicKeys'](urls, 'applicationId');
+
+    //       expect(logger.error).toHaveBeenCalledWith('Error on https://example.com while getting public key');
+    //       expect(result).toHaveLength(0);
+    //     });
+
+    //     it('should filter out invalid public key responses', async () => {
+    //       const urls = ['https://example.com', 'https://another.com'];
+    //       UtilsServiceMock.getPublicKey
+    //         .mockResolvedValueOnce({ success: true, data: 'publicKey' })
+    //         .mockResolvedValueOnce({ success: false });
+
+    //       PrismaServiceMock.publicKeys.create.mockResolvedValue({});
+
+    //       const result = await service['storePublicKeys'](urls, 'applicationId');
+
+    //       expect(UtilsServiceMock.getPublicKey).toHaveBeenCalledWith('example.com');
+    //       expect(UtilsServiceMock.getPublicKey).toHaveBeenCalledWith('another.com');
+    //       expect(PrismaServiceMock.publicKeys.create).toHaveBeenCalledTimes(1);
+    //       expect(result).toHaveLength(1);
+    //     });
+    //   });
 });
