@@ -1,6 +1,6 @@
 
 ## Code Coverage 
-[![codecov](https://codecov.io/gh/Zolo-Ryan/stencil-oidc-wrapper/branch/feat-final/graph/badge.svg?token=EOQ2P3DIM0)](https://codecov.io/gh/Zolo-Ryan/stencil-oidc-wrapper)
+[![codecov](https://codecov.io/gh/Zolo-Ryan/stencil-oidc-wrapper/branch/test-Ashu/graph/badge.svg?token=EOQ2P3DIM0)](https://codecov.io/gh/Zolo-Ryan/stencil-oidc-wrapper)
 ## Description
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
