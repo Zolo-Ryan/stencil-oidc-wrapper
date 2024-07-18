@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { OidcModule } from './oidc/oidc.module';
+// import { OidcModule } from './oidc/oidc.module';
 import { UserModule } from './user/user.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PrismaService } from './prisma/prisma.service';
@@ -24,10 +24,12 @@ import { TenantModule } from './tenant/tenant.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
 import { UtilsService } from './utils/utils.service';
 import { AdminMiddleware } from './middlewares/admin.middleware';
+import { OpenidModule } from './openid/openid.module';
+import { OidcConfigModule } from './oidc-config/oidc-config.module';
 
 @Module({
   imports: [
-    OidcModule,
+    // OidcModule,
     UserModule,
     PrismaModule,
     JwtModule.register({
@@ -45,6 +47,8 @@ import { AdminMiddleware } from './middlewares/admin.middleware';
     OtpModule,
     TenantModule,
     ApiKeysModule,
+    OpenidModule,
+    OidcConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, MemoryMonitorService, UtilsService],

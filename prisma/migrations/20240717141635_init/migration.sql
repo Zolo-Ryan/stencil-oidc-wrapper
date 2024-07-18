@@ -172,6 +172,19 @@ CREATE TABLE "PublicKeys" (
     CONSTRAINT "PublicKeys_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+-- CreateTable
+CREATE TABLE "Session" (
+    "id" TEXT NOT NULL,
+    "val" TEXT NOT NULL,
+    "uid" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "Interaction" (
+    "id" TEXT NOT NULL,
+    "val" TEXT NOT NULL
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "ApplicationOauthScope_applicationsId_name_key" ON "ApplicationOauthScope"("applicationsId", "name");
 
@@ -252,3 +265,12 @@ CREATE UNIQUE INDEX "PublicKeys_id_key" ON "PublicKeys"("id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "PublicKeys_applicationId_hostname_key" ON "PublicKeys"("applicationId", "hostname");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Session_id_key" ON "Session"("id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Session_uid_key" ON "Session"("uid");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Interaction_id_key" ON "Interaction"("id");

@@ -224,3 +224,19 @@ model PublicKeys {
 
   @@unique([applicationId, hostname], name: "publicKeys_unique_applicationId_hostname")
 }
+
+model Session {
+  id  String @unique
+  val String
+  uid String @unique
+}
+
+model Interaction {
+  id  String @unique
+  val String
+}
+
+model Grant {
+  id  String @unique
+  val String
+}
